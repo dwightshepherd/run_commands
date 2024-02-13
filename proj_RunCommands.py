@@ -26,8 +26,6 @@ import ipaddress
 import argparse
 import re
 
-#from netmiko.ssh_exception import NetMikoTimeoutException
-#from netmiko.ssh_exception import NetMikoAuthenticationException
 from netmiko.exceptions import NetMikoTimeoutException
 from netmiko.exceptions import NetMikoAuthenticationException
 
@@ -40,18 +38,20 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # IOError: Broken Pipe
 signal.signal(signal.SIGINT, signal.SIG_DFL)  # KeyboardInterrupt: Ctrl + C
 
 if len(sys.argv) < 3:
-    print(f"Usage: {sys.argv[0]} commands.txt nodes.json")
+    print(f"Usage: {sys.argv[0]} commands.txt devices.json [-t timeout]")
     exit()
 
-#parser = argparse.ArgumentParser()
-#parser.add_argument("--diff", help="Run a diff on existing file on the output")
-#args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument("commands_file", help="Path to the commands file (commands.txt)")
+parser.add_argument("devices_file", help="Path to the devices file (devices.json)")
+parser.add_argument("-t", "--timeout", help="Set Timeout value for script", type=int)
+args = parser.parse_args()
 
-# if args.diff:
-#     print(args.diff)
+GLOBAL_TIMEOUT = 0 #Use to set the timeout of the each command
 
-# exit()
-
+if args.timeout:
+    GLOBAL_TIMEOUT = args.timeout
+    print(f"\n*** COMMAND TIMEOUT SET: {GLOBAL_TIMEOUT} seconds\n")
 
 nodes_processed = 0
 nodes_skipped = 0
@@ -148,10 +148,10 @@ START_TIME = datetime.now().replace(microsecond=0)
 s_TNOW = getTNOW_string()
 log_Report = "Log-Report" + s_TNOW + ".txt"  # Log file
 
-nodes = getNodesFromFile(sys.argv[2])
-commands = getCommandsFromFile(sys.argv[1])
+nodes = getNodesFromFile(args.devices_file)
+commands = getCommandsFromFile(args.commands_file)
 
-print(f"Commands: {commands} on nodes in {sys.argv[2]}")
+print(f"Commands: {commands} on nodes in {commands}")
 
 output_PATH = "./"
 #root_dir = "Output"
@@ -184,7 +184,10 @@ for node in nodes:
             writeToReportFile(output, log_Report)
 
             output = ""
-            timeout = 10
+            timeout = 10; 
+
+            if GLOBAL_TIMEOUT:
+                timeout = GLOBAL_TIMEOUT
 
             command_timeout_list = list() 
             command_timeout_list.append("location all")
@@ -200,9 +203,15 @@ for node in nodes:
 
                     #Set a longer time if the commands are known to take too long               
                     if   ("location all" in command):
-                        timeout = 20
+                        if GLOBAL_TIMEOUT:
+                            timeout = GLOBAL_TIMEOUT
+                        else:
+                            timeout = 20
                     elif ("show logg" in command):
-                        timeout = 30 
+                        if GLOBAL_TIMEOUT:
+                            timeout = GLOBAL_TIMEOUT
+                        else:
+                            timeout = 30 
                                             
                     output += net_connect.send_command(command, read_timeout=timeout)
 
