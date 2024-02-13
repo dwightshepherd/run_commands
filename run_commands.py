@@ -6,8 +6,9 @@
 # Take from  netmiko github repository
 # NOTE: You must be running python version 3
 
-# Edited: Dwight Shepherd, February 14, 2023
-#Version 1.4
+# Edited: Dwight Shepherd, February 13, 2024
+# Version 1.5
+# Added COMMAND TIMEOUT feature
 
 # Todo:
 # To update the Todo
