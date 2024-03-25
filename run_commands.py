@@ -6,9 +6,9 @@
 # Take from  netmiko github repository
 # NOTE: You must be running python version 3
 
-# Edited: Dwight Shepherd, February 13, 2024
-# Version 1.5
-# Added COMMAND TIMEOUT feature
+# Edited: Dwight Shepherd, March 21, 2024
+# Version 1.5.2
+# Added timestamp at the end of filename to differentiate outputs of the same node
 
 # Todo:
 # To update the Todo
@@ -52,7 +52,7 @@ GLOBAL_TIMEOUT = 0 #Use to set the timeout of the each command
 
 if args.timeout:
     GLOBAL_TIMEOUT = args.timeout
-    print(f"\n*** COMMAND TIMEOUT SET: {GLOBAL_TIMEOUT} seconds\n")
+    
 
 nodes_processed = 0
 nodes_skipped = 0
@@ -103,7 +103,9 @@ def generateOutput(parent_dir, cpe, show_run_config):
     """ Generates Output for CPE """
     #TNOW = getTNOW_string()
 
-    CPE_filename = parent_dir + "/" + cpe + ".txt"
+    s_TNOW = getTNOW_string()
+    #CPE_filename = parent_dir + "/" + cpe + ".txt"
+    CPE_filename = f"{parent_dir}/{cpe}_{s_TNOW}.txt"
     CPE_output_file = open(CPE_filename, 'w')
     CPE_output_file.write(show_run_config)
     CPE_output_file.close()
@@ -152,7 +154,11 @@ log_Report = "Log-Report" + s_TNOW + ".txt"  # Log file
 nodes = getNodesFromFile(args.devices_file)
 commands = getCommandsFromFile(args.commands_file)
 
-print(f"Commands: {commands} on nodes in {commands}")
+print(f"\nCommands: {commands}\n\n ... on nodes in {nodes}")
+print(f"\n{len(commands)} commands on {len(nodes)} nodes")
+
+if GLOBAL_TIMEOUT:
+    print(f"\nTimeout flag set: {GLOBAL_TIMEOUT} seconds")
 
 output_PATH = "./"
 #root_dir = "Output"
@@ -249,6 +255,8 @@ END_TIME = datetime.now().replace(microsecond=0)
 total_time = END_TIME - START_TIME
 
 print("\nSCRIPT SUMMARY")
+if GLOBAL_TIMEOUT:
+    print(f"Timeout Flag set: {GLOBAL_TIMEOUT} secs")
 print("Nodes Processed: " + str(nodes_processed))
 print("Nodes Skipped: " + str(nodes_skipped))
 print("Script executed in " + str(total_time))
