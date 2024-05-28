@@ -1,6 +1,9 @@
 [Install dependencies]
 python install -r requirements.txt
 
+version 1.6
+[x] - Added timestamp at the end of filename to differentiate outputs of the same node
+[x] - Added the feature to configure node run_commands.py --configure
 
 Version 1.4
 [Bug Fixes]
