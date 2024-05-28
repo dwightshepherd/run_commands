@@ -6,9 +6,10 @@
 # Take from  netmiko github repository
 # NOTE: You must be running python version 3
 
-# Edited: Dwight Shepherd, March 21, 2024
-# Version 1.5.2
+# Edited: Dwight Shepherd, May 22, 2024
+# Version 1.6
 # Added timestamp at the end of filename to differentiate outputs of the same node
+# Added the feature to configure node run_commands.py --configure
 
 # Todo:
 # To update the Todo
@@ -39,20 +40,24 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # IOError: Broken Pipe
 signal.signal(signal.SIGINT, signal.SIG_DFL)  # KeyboardInterrupt: Ctrl + C
 
 if len(sys.argv) < 3:
-    print(f"Usage: {sys.argv[0]} commands.txt devices.json [-t timeout]")
+    print(f"Usage: {sys.argv[0]} commands.txt devices.json [-t timeout] [--configure]")
     exit()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("commands_file", help="Path to the commands file (commands.txt)")
 parser.add_argument("devices_file", help="Path to the devices file (devices.json)")
 parser.add_argument("-t", "--timeout", help="Set Timeout value for script", type=int)
+parser.add_argument('--configure', action='store_true', help='Flag to configure the devices')
 args = parser.parse_args()
 
 GLOBAL_TIMEOUT = 0 #Use to set the timeout of the each command
+GLOBAL_CONFIGURE = False
 
 if args.timeout:
     GLOBAL_TIMEOUT = args.timeout
     
+if args.configure:
+    GLOBAL_CONFIGURE = True
 
 nodes_processed = 0
 nodes_skipped = 0
@@ -157,6 +162,9 @@ commands = getCommandsFromFile(args.commands_file)
 print(f"\nCommands: {commands}\n\n ... on nodes in {nodes}")
 print(f"\n{len(commands)} commands on {len(nodes)} nodes")
 
+if GLOBAL_CONFIGURE:
+    print(f"\nConfigure flag set!!! Changes will be name on nodes!!!\n")
+
 if GLOBAL_TIMEOUT:
     print(f"\nTimeout flag set: {GLOBAL_TIMEOUT} seconds")
 
@@ -168,7 +176,6 @@ output_dir = "Output"
 output_PATH = createDirectory(output_PATH, output_dir)
 
 username, password = getCredentials()
-
 
 for node in nodes:
     # if the node ip is NOT commented out with #
@@ -200,27 +207,37 @@ for node in nodes:
             command_timeout_list.append("location all")
             command_timeout_list.append("show logg")
 
-            for command in commands:
-                command = command.strip()  # remove any leading or trailing spaces
-                if command and not command.startswith("#") :
-                    header = f'{command:-^70}'
-                    output = output + "\n" + header + "\n"
-                    print(p_node_prompt + command)
-                    output += p_node_prompt + command + "\n"
+            if not GLOBAL_CONFIGURE: #commands dont change anything on the device
+                
+                for command in commands:
+                    command = command.strip()  # remove any leading or trailing spaces
+                    if command and not command.startswith("#") :
+                        header = f'{command:-^70}'
+                        output = output + "\n" + header + "\n"
+                        print(p_node_prompt + command)
+                        output += p_node_prompt + command + "\n"
 
-                    #Set a longer time if the commands are known to take too long               
-                    if   ("location all" in command):
-                        if GLOBAL_TIMEOUT:
-                            timeout = GLOBAL_TIMEOUT
-                        else:
-                            timeout = 20
-                    elif ("show logg" in command):
-                        if GLOBAL_TIMEOUT:
-                            timeout = GLOBAL_TIMEOUT
-                        else:
-                            timeout = 30 
-                                            
-                    output += net_connect.send_command(command, read_timeout=timeout)
+                        #Set a longer time if the commands are known to take too long               
+                        if   ("location all" in command):
+                            if GLOBAL_TIMEOUT:
+                                timeout = GLOBAL_TIMEOUT
+                            else:
+                                timeout = 20
+                        elif ("show logg" in command):
+                            if GLOBAL_TIMEOUT:
+                                timeout = GLOBAL_TIMEOUT
+                            else:
+                                timeout = 30 
+                                                
+                        output += net_connect.send_command(command, read_timeout=timeout)
+            else: #Command make change on device/node
+                #commands = commands.strip()
+                config_commands = commands
+                output += net_connect.send_config_set(config_commands)
+                if node['device_type'] in ('cisco_xe', 'cisco_nxos', 'cisco_ios'):
+                    net_connect.save_config() #Save configuration changes made                
+                output += "Configuration changes saved"
+                             
 
             print("Saving output ... ")
             output = generateOutput(output_PATH, node_name, output)
