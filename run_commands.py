@@ -40,7 +40,7 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # IOError: Broken Pipe
 signal.signal(signal.SIGINT, signal.SIG_DFL)  # KeyboardInterrupt: Ctrl + C
 
 if len(sys.argv) < 3:
-    print(f"Usage: {sys.argv[0]} commands.txt devices.json [-t timeout] [--configure]")
+    print(f"Usage: {sys.argv[0]} commands.txt devices.json [-t timeout] [--configure] [--print_to_screen]")
     exit()
 
 parser = argparse.ArgumentParser()
@@ -48,16 +48,22 @@ parser.add_argument("commands_file", help="Path to the commands file (commands.t
 parser.add_argument("devices_file", help="Path to the devices file (devices.json)")
 parser.add_argument("-t", "--timeout", help="Set Timeout value for script", type=int)
 parser.add_argument('--configure', action='store_true', help='Flag to configure the devices')
+parser.add_argument('-p','--print_to_screen', action='store_true', help='Flag to print output to screen')
 args = parser.parse_args()
 
 GLOBAL_TIMEOUT = 0 #Use to set the timeout of the each command
 GLOBAL_CONFIGURE = False
+GLOBAL_PRINT_TO_SCREEN = False
 
 if args.timeout:
     GLOBAL_TIMEOUT = args.timeout
     
 if args.configure:
     GLOBAL_CONFIGURE = True
+
+if args.print_to_screen:
+    GLOBAL_PRINT_TO_SCREEN = True
+
 
 nodes_processed = 0
 nodes_skipped = 0
@@ -168,6 +174,9 @@ if GLOBAL_CONFIGURE:
 if GLOBAL_TIMEOUT:
     print(f"\nTimeout flag set: {GLOBAL_TIMEOUT} seconds")
 
+if GLOBAL_PRINT_TO_SCREEN:
+    print(f"\nPrint to Screen flag set: Result will be printed to screen")
+
 output_PATH = "./"
 #root_dir = "Output"
 # market_dir = sys.argv[2].split("/")[-1].split(".")[0] #Ugly code... or maybe a bit Nerdy
@@ -229,7 +238,10 @@ for node in nodes:
                             else:
                                 timeout = 30 
                                                 
-                        output += net_connect.send_command(command, read_timeout=timeout)
+                        result = net_connect.send_command(command, read_timeout=timeout)
+                        if GLOBAL_PRINT_TO_SCREEN:
+                            print(result)
+                        output += result
             else: #Command make change on device/node
                 #commands = commands.strip()
                 config_commands = commands
